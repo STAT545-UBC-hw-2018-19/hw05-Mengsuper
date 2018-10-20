@@ -1,0 +1,256 @@
+---
+title: "hw05 Factor and figure management"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(gapminder))
+suppressPackageStartupMessages(library(scales))
+suppressPackageStartupMessages(library(plotly))
+```
+```{r}
+library(tidyverse)
+library(knitr)
+library(gapminder)
+library(scales)
+library(plotly)
+library(ggplot2)
+```
+
+### Part 1: Factor management
+Before we start the work, we need first check the data and we can see that `country` and `continent` variables are factors
+```{r}
+summary(gapminder)
+str(gapminder)
+```
+
+
+#### Drop Oceania
+Filter the Gapminder data to remove observations associated with the continent of Oceania. Additionally, remove unused factor levels. Provide concrete information on the data before and after removing these rows and Oceania; address the number of rows and the levels of the affected factors.
+
+To drop Oceania, we can use `apply` function to filter the entry
+```{r}
+gapminder_without_oceania <- gapminder %>% 
+  filter(continent != "Oceania")
+
+str(gapminder_without_oceania) %>% 
+  knitr::kable()
+```
+Let's take a look at the continent values in `gapminder_without_oceania`.
+```{r}
+unique(gapminder_without_oceania$continent)
+```
+
+As we can see from the result, the Oceania continent is removed from the dataframe, but the levels are still the same. We can remove these unused variables using `droplevels` function.
+```{r}
+gapminder_without_oceania <- gapminder_without_oceania %>% 
+  droplevels()
+
+str(gapminder_without_oceania) %>% 
+  knitr::kable()
+```
+
+```{r}
+unique(gapminder_without_oceania$continent)
+```
+
+From the result, we can see that the continent levels change from 5 to 4. That's, the unused level is removed.
+
+#### Reorder the levels of country or continent
+Use the forcats package to change the order of the factor levels, based on a principled summary of one of the quantitative variables. Consider experimenting with a summary statistic beyond the most basic choice of the median.
+
+For this task, I choose the mean of `gdpPercap` for each continent to explore the difference between `arrange` and `fct_reorder` functions. Before start, we first the origial mean of each continent.
+
+```{r}
+meanGdpPerCap <- gapminder_without_oceania %>% 
+  group_by(continent) %>% 
+  summarise(meanGdpPerCap = mean(gdpPercap))
+
+knitr::kable(meanGdpPerCap)
+```
+
+Let's first look at the `arrange` function.
+
+```{r}
+meanGdpPerCap_arrange <- meanGdpPerCap %>% 
+  arrange(continent, meanGdpPerCap) 
+
+knitr::kable(meanGdpPerCap_arrange)
+levels(meanGdpPerCap_arrange$continent)
+```
+
+It's obvisous that the `arrange` function doesn't actually the levels of continent.
+
+```{r}
+meanGdpPerCap_fct <- fct_reorder( 
+  gapminder_without_oceania$continent,
+  gapminder_without_oceania$lifeExp,
+  mean)
+
+levels(meanGdpPerCap_fct)
+```
+
+As we can see from the result, the order of continent has changed.
+
+### Part 2: File I/O
+
+Experiment with one or more of write_csv()/read_csv() (and/or TSV friends), saveRDS()/readRDS(), dput()/dget(). Create something new, probably by filtering or grouped-summarization of Singer or Gapminder. I highly recommend you fiddle with the factor levels, i.e. make them non-alphabetical (see previous section). Explore whether this survives the round trip of writing to file then reading back in.
+
+
+#### write_csv()/read_csv()
+I will use the asian contries data to explore this task. Let's first get all asian countries.
+
+```{r}
+asian_countries <- gapminder %>% 
+  filter(continent == "Asia")
+
+knitr::kable(head(asian_countries, 15)) #only show 15 row for simplicty
+```
+
+We write this dataframe to `asian_countries.csv` file.
+```{r}
+write_csv(asian_countries, "asian_countries.csv")
+```
+
+Then, we read the data from this file and save it to `asian_countries_read` variable.
+
+```{r}
+asian_countries_csv <- read_csv("asian_countries.csv")
+```
+
+```{r}
+knitr::kable(head(asian_countries_csv, 15))
+```
+
+We can test whether these two data frame are the same. 
+
+```{r}
+asian_countries_csv == asian_countries
+```
+
+All data cells are the same.
+
+#### saveRDS()/readRDS()
+Then, we can also save this data to RDS
+
+```{r}
+saveRDS(asian_countries, "asian_countries.rds")
+```
+
+```{r}
+asian_countries_rds <- readRDS("asian_countries.rds")
+knitr::kable(head(asian_countries_rds, 15))
+```
+
+#### dput()/dget()
+Similarly, we can use `dput` and `dget` functions.
+```{r}
+dput(asian_countries, "asian_countries.txt")
+```
+
+```{r}
+asian_countries_txt <- dget("asian_countries.txt")
+knitr::kable(head(asian_countries_txt, 15))
+```
+
+### Part 3: Visualization design
+
+Remake at least one figure or create a new one, in light of something you learned in the recent class meetings about visualization design and color. Maybe juxtapose your first attempt and what you obtained after some time spent working on it. Reflect on the differences. If using Gapminder, you can use the country or continent color scheme that ships with Gapminder. Consult the dimensions listed in All the Graph Things.
+
+Then, make a new graph by converting this visual (or another, if you’d like) to a plotly graph. What are some things that plotly makes possible, that are not possible with a regular ggplot2 graph?
+
+
+We can plot the lifeExp for each continent, as shown bleow.
+```{r}
+p <- ggplot(gapminder, aes(x = gdpPercap, y = lifeExp, color = continent)) +
+     geom_point(alpha = (1/3)) + scale_x_log10() +
+     labs(title = "Life expectancy for each continent", x = "gdpPercap", y = "Life expectancy")
+
+p
+```
+
+Then we can use plotly to generate better visual graph as shown below (show x and y axis values, change background, etc.).
+```{r}
+newP <- ggplot(gapminder, aes(x = gdpPercap, y = lifeExp, color = continent)) +
+  geom_point(alpha = (1/3)) + scale_x_log10() +
+  labs(title = "Life expectancy for each continent", x = "gdpPercap", y = "Life expectancy") +
+  theme_classic() +
+  theme(axis.text.x  = element_text(angle=65, vjust=0.5, size=8),
+        axis.text = element_text(size = 12),
+        strip.text = element_text(size = 16), 
+        strip.background = element_rect(colour = "grey")) + 
+  scale_y_continuous(breaks = 1:20 * 5) + #show the y-axis value
+  scale_colour_brewer(palette = "Set1")  #set color scheme
+
+newP
+```
+
+I use the following code to generate the ggplotly visulation and publish it to plotly. The codes are commented because otherwise it will generate html file.
+```{r}
+#ggploty_newP <- ggplotly(newP)
+#ggploty_newP
+
+#newP_link = api_create(ggploty_newP, filename="ggploty_newP")
+#newP_link
+```
+
+Please visit [ggploty link](https://plot.ly/~ilemon/1/#/) to view the graph. 
+
+### Part 4: Writing figures to file
+
+```{r}
+# save as a jpg file 
+ggsave("newP.jpg", plot = newP, width = 20, height = 20, units = "cm", dpi = 100)
+```
+
+```{r}
+# save as a vector image
+ggsave("newP.eps", plot = newP)
+```
+
+Here is the saved image
+
+### But I want to do more!
+
+Make a deeper exploration of the forcats packages, i.e. try more of the factor level reordering functions.
+
+We might order the level based on the frequency. `fct_infreq` will reorder factor levels by frequency. 
+```{r}
+# default order is sorted alphabetically 
+gapminder$continent %>% 
+  levels()
+```
+
+```{r}
+gapminder$continent %>% 
+  fct_infreq() %>% 
+  levels()
+```
+
+We can also reverse the  order by `fect_rev` function.
+
+
+```{r}
+gapminder$continent %>% 
+  fct_infreq() %>% 
+  fct_rev() %>% 
+  levels()
+```
+
+Furthermore we can change the order of the levels by `fct_relevel`.
+```{r}
+gapminder$continent %>% 
+  levels()
+```
+
+```{r}
+gapminder$continent %>% 
+  fct_relevel("Asia", "Africa") %>% 
+  levels()
+```
+

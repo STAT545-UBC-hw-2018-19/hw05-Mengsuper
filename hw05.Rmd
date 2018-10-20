@@ -213,8 +213,6 @@ ggsave("newP.jpg", plot = newP, width = 20, height = 20, units = "cm", dpi = 100
 ggsave("newP.eps", plot = newP)
 ```
 
-Here is the saved image
-
 ### But I want to do more!
 
 Make a deeper exploration of the forcats packages, i.e. try more of the factor level reordering functions.
